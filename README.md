@@ -8,7 +8,7 @@ There is an ugly proof of concept using the first version of the API  [here](htt
 
 #### Installation
 
-After adding sources to your project on visual studio, you have to NuGet package. You can have some information [here](https://www.nuget.org/).
+After adding sources to your project on visual studio, you have to add a NuGet package. You can have some information about NuGet packages [here](https://www.nuget.org/).
 
 The Nuget package to install is [SocketIoClientDotNet](https://github.com/Quobject/SocketIoClientDotNet/) (tested with v0.9.12). It's the only means to remove dependencies errors. In the future, we will propose our own NuGet package.
 
