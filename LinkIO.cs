@@ -1,22 +1,22 @@
-﻿using System;
+﻿using LinkIOcsharp.model;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ConnectIO
+namespace LinkIOcsharp
 {
-    public interface ConnectIO
+    public interface LinkIO
     {
 
-        ConnectIO connectTo(String serverIP);
-        ConnectIO withUser(String user);
-        ConnectIO connect(Action<Object> listener);
-        void createGroup();
-        void joinGroup(String groupID);
-
-        void onJoinGroup(Action<Object> listener);
-        void onUserInGroupChanged(Action<Object> listener);
+        LinkIO connectTo(String serverIP);
+        LinkIO withUser(String user);
+        LinkIO connect(Action listener);
+        void createRoom();
+        void joinRoom(String roomID, Action<String, List<User>> callback);
+        
+        void onUserInRoomChanged(Action<List<User>> listener);
         void on(String eventName, Action<Object> listener);
         void off(String eventName);
 

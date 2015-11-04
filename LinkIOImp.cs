@@ -9,46 +9,44 @@ using Quobject.SocketIoClientDotNet.Client;
 
 // Json C# implementation
 using Newtonsoft.Json.Linq;
-
-using ConnectIO.lib.exception;
 using Newtonsoft.Json;
-using POC_ConnectIO.lib;
+using LinkIOcsharp.model;
+using LinkIOcsharp.exception;
 
-namespace ConnectIO.lib
+namespace LinkIOcsharp
 {
-    public class ConnectIOImp : ConnectIO
+    public class LinkIOImp : LinkIO
     {
-        public static ConnectIO Instance = new ConnectIOImp();
+        public static LinkIO Instance = new LinkIOImp();
 
         private Socket socket;
         private String serverIP;
         private String user;
-        private Action<Object> joinGroupListener;
-        private Action<List<String>> userInGroupChangedListener;
+        private Action<List<User>> userInRoomChangedListener;
         private Dictionary<String, Action<Object>> eventListeners;
 
-        private ConnectIOImp() {
+        private LinkIOImp() {
             eventListeners = new Dictionary<String, Action<Object>>();
         }
 
-        public static ConnectIO create()
+        public static LinkIO create()
         {
-            return new ConnectIOImp();
+            return new LinkIOImp();
         }
 
-        public ConnectIO connectTo(String serverIP)
+        public LinkIO connectTo(String serverIP)
         {
             this.serverIP = serverIP;
             return this;
         }
 
-        public ConnectIO withUser(String user)
+        public LinkIO withUser(String user)
         {
             this.user = user;
             return this;
         }
 
-        public ConnectIO connect(Action<Object> listener)
+        public LinkIO connect(Action listener)
         {
 
             //Console.WriteLine("Connecting to http://" + serverIP + "?user=" + user);
@@ -61,21 +59,15 @@ namespace ConnectIO.lib
 
             socket = IO.Socket("http://" + serverIP, opts);
 
-            socket.On("joinedGroup", (e) =>
-            {
-                if (joinGroupListener != null)
-                    joinGroupListener.Invoke((string)e);
-            });
-
             socket.On("users", (e) =>
             {
-                if (userInGroupChangedListener != null)
-                    userInGroupChangedListener.Invoke(((JArray) e).ToObject<List<String>>());
+                if (userInRoomChangedListener != null)
+                    userInRoomChangedListener.Invoke(((JArray) e).ToObject<List<User>>());
             });
 
             socket.On(Socket.EVENT_CONNECT, () =>
             {
-                listener.Invoke(null);
+                listener.Invoke();
 
             });
 
@@ -97,26 +89,24 @@ namespace ConnectIO.lib
             return this;
         }
 
-        public void createGroup()
+        public void createRoom()
         {
             checkConnect();
             socket.Emit("createGroup");
         }
 
-        public void joinGroup(String groupID)
+        public void joinRoom(String roomID, Action<String, List<User>> callback)
         {
             checkConnect();
-            socket.Emit("joinGroup", groupID);
+            socket.Emit("joinRoom", (id, users) =>
+            {
+                callback.Invoke(id as String, ((JArray)users).ToObject<List<User>>());
+            }, roomID);
         }
 
-        public void onJoinGroup(Action<Object> listener)
+        public void onUserInRoomChanged(Action<List<User>> listener)
         {
-            joinGroupListener = listener;
-        }
-
-        public void onUserInGroupChanged(Action<Object> listener)
-        {
-            userInGroupChangedListener = listener;
+            userInRoomChangedListener = listener;
         }
 
         public void on(String eventName, Action<Object> listener)
