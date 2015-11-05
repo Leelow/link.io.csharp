@@ -23,10 +23,11 @@ namespace LinkIOcsharp
         private String serverIP;
         private String user;
         private Action<List<User>> userInRoomChangedListener;
-        private Dictionary<String, Action<Object>> eventListeners;
+        private Dictionary<String, Action<Event>> eventListeners;
+        private bool connected = false;
 
         private LinkIOImp() {
-            eventListeners = new Dictionary<String, Action<Object>>();
+            eventListeners = new Dictionary<String, Action<Event>>();
         }
 
         public static LinkIO create()
@@ -67,13 +68,17 @@ namespace LinkIOcsharp
 
             socket.On(Socket.EVENT_CONNECT, () =>
             {
+                connected = true;
                 listener.Invoke();
+            });
 
+            socket.On(Socket.EVENT_DISCONNECT, () =>
+            {
+                connected = false;
             });
 
             socket.On("event", (Object o) =>
             {
-
                 JObject evt = (JObject) o;
                 String eventName = (String) evt.SelectToken("type");
                 if (eventListeners.ContainsKey(eventName))
@@ -89,10 +94,13 @@ namespace LinkIOcsharp
             return this;
         }
 
-        public void createRoom()
+        public void createRoom(Action<String> callback)
         {
             checkConnect();
-            socket.Emit("createGroup");
+            socket.Emit("createRoom", (id) =>
+            {
+                callback.Invoke(id as String);
+            }, null);
         }
 
         public void joinRoom(String roomID, Action<String, List<User>> callback)
@@ -109,7 +117,7 @@ namespace LinkIOcsharp
             userInRoomChangedListener = listener;
         }
 
-        public void on(String eventName, Action<Object> listener)
+        public void on(String eventName, Action<Event> listener)
         {
             eventListeners.Add(eventName, listener);
         }
@@ -136,20 +144,41 @@ namespace LinkIOcsharp
             send(eventName, data, false);
         }
 
-        public void send(string eventName, JsonToken data, Boolean receiveAlso)
+        public void send(string eventName, object data, List<User> receivers, bool receiveAlso)
         {
-            throw new NotImplementedException();
+            List<String> ids = new List<string>();
+            foreach (var user in receivers)
+            {
+                ids.Add(user.ID);
+            }
+
+
+            JObject o = JObject.FromObject(new
+            {
+                me = receiveAlso,
+                type = eventName,
+                data = data,
+                idList = ids
+            });
+
+            socket.Emit("eventToList", o);
         }
 
-        public void send(string eventName, JsonToken data)
+        public void send(string eventName, object data, List<User> receivers)
         {
-            throw new NotImplementedException();
+            send(eventName, data, receivers, false);
         }
 
-        public void getLatency(Action<Object> listener)
+        public void getLatency(Action<Double> listener)
         {
             checkConnect();
-            socket.Emit("ping");
+
+            var from = DateTime.UtcNow;
+            socket.Emit("ping", () =>
+            {
+                Double ping = Math.Round((DateTime.UtcNow - from).TotalSeconds, 3) * 1000;
+                listener.Invoke(ping);
+            }, null);
         }
 
         private void checkConnect()
@@ -160,5 +189,17 @@ namespace LinkIOcsharp
                 throw new NotConnectedException("ConnectIO: socket disconnected.");
         }
 
+        public void getAllUsersInCurrentRoom(Action<List<User>> callback)
+        {
+            checkConnect();
+            socket.Emit("getAllUsers", (users) => {
+                callback.Invoke(((JArray)users).ToObject<List<User>>());
+            });
+        }
+
+        public bool isConnected()
+        {
+            return connected;
+        }
     }
 }
