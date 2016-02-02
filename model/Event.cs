@@ -5,6 +5,9 @@ using System.Text;
 using System.Threading.Tasks;
 
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json;
+using System.IO;
+using System.Runtime.Serialization.Formatters.Binary;
 
 namespace LinkIOcsharp.model
 {
@@ -12,33 +15,23 @@ namespace LinkIOcsharp.model
     {
         private String type;
         private Boolean me;
-        private Dictionary<String, Object> data;
+        private JObject root;
+        private string obj;
 
         public Event(JObject jsonObj)
         {
             try
             {
-
-                this.type = (String) jsonObj.SelectToken("type");
-                data = new Dictionary<String, Object>();
-
-                JObject ds = (JObject) jsonObj.SelectToken("data");
-                foreach(KeyValuePair<String,JToken> j in ds)
-                {
-                    data.Add(j.Key, j.Value.ToObject<Object>());
-                }
-                
+                root = jsonObj;
+                this.type = (String)jsonObj.SelectToken("type");
+                this.obj = jsonObj.SelectToken("data").ToObject<string>();
             }
-            catch (Exception e)
-            {
-                //e.printStackTrace();
-            }
+            catch (Exception e){}
         }
 
-        public T get<T>(String s)
+        public T get<T>()
         {
-
-            return (T) data[s];
+            return (T)deserializeObject(obj);
         }
 
         public Boolean isMe()
@@ -60,5 +53,16 @@ namespace LinkIOcsharp.model
         {
             this.type = type;
         }
+
+        public static object deserializeObject(string str)
+        {
+            byte[] bytes = Convert.FromBase64String(str);
+
+            using (MemoryStream stream = new MemoryStream(bytes))
+            {
+                return new BinaryFormatter().Deserialize(stream);
+            }
+        }
     }
+
 }
