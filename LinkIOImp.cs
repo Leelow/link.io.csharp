@@ -12,22 +12,22 @@ using LinkIOcsharp.exception;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
+using System.Threading.Tasks;
 
-namespace LinkIOcsharp
+namespace link.io.csharp
 {
     public class LinkIOImp : LinkIO
     {
-        public static LinkIO Instance = new LinkIOImp();
-
         private Socket socket;
         private String serverIP;
         private String user;
-        private string id;
+        private string id = string.Empty;
         private Action<List<User>> userInRoomChangedListener;
         private Dictionary<String, Action<Event>> eventListeners;
         private bool connected = false;
+        private bool cSharpBinarySerializer = false;
 
-        private LinkIOImp()
+        internal LinkIOImp()
         {
             eventListeners = new Dictionary<String, Action<Event>>();
             id = "";
@@ -39,30 +39,7 @@ namespace LinkIOcsharp
             };
         }
 
-        public static LinkIO create()
-        {
-            return new LinkIOImp();
-        }
-
-        public LinkIO connectTo(String serverIP)
-        {
-            this.serverIP = serverIP;
-            return this;
-        }
-
-        public LinkIO withUser(String user)
-        {
-            this.user = user;
-            return this;
-        }
-
-        public LinkIO withID(String id)
-        {
-            this.id = id;
-            return this;
-        }
-
-        public LinkIO connect(Action listener)
+        public LinkIO connect(Action<LinkIO> listener)
         {
             IO.Options opts = new IO.Options();
             Dictionary<String, String> query = new Dictionary<String, String>();
@@ -79,16 +56,21 @@ namespace LinkIOcsharp
             socket.On("users", (e) =>
             {
                 if (userInRoomChangedListener != null)
-                    userInRoomChangedListener.Invoke(((JArray)e).ToObject<List<User>>());
+                {
+                    Task.Run(() =>
+                    {
+                        userInRoomChangedListener.Invoke(((JArray)e).ToObject<List<User>>());
+                    });
+                }
             });
-
+            
             socket.On(Socket.EVENT_CONNECT, () =>
             {
-                new Thread(() =>
+                Task.Run(() =>
                 {
                     connected = true;
-                    listener.Invoke();
-                }).Start();
+                    listener.Invoke(this);
+                });
             });
 
             socket.On(Socket.EVENT_DISCONNECT, () =>
@@ -102,15 +84,23 @@ namespace LinkIOcsharp
                 String eventName = (String)evt.SelectToken("type");
                 if (eventListeners.ContainsKey(eventName))
                 {
-                    eventListeners[eventName].Invoke(new Event(evt));
+                    Task.Run(() =>
+                    {
+                        eventListeners[eventName].Invoke(new Event(evt, cSharpBinarySerializer));
+                    });
                 }
 
 
             });
-
+            
             socket.Connect();
 
             return this;
+        }
+
+        internal void useCSharpBinarySerializer(bool use)
+        {
+            cSharpBinarySerializer = use;
         }
 
         public void createRoom(Action<String> callback)
@@ -118,7 +108,10 @@ namespace LinkIOcsharp
             checkConnect();
             socket.Emit("createRoom", (id) =>
             {
-                callback.Invoke(id as String);
+                Task.Run(() =>
+                {
+                    callback.Invoke(id as String);
+                });
             }, null);
         }
 
@@ -127,7 +120,10 @@ namespace LinkIOcsharp
             checkConnect();
             socket.Emit("joinRoom", (id, users) =>
             {
-                callback.Invoke(id as String, ((JArray)users).ToObject<List<User>>());
+                Task.Run(() =>
+                {
+                    callback.Invoke(id as String, ((JArray)users).ToObject<List<User>>());
+                });
             }, roomID);
         }
 
@@ -152,10 +148,11 @@ namespace LinkIOcsharp
             {
                 me = receiveAlso,
                 type = eventName,
-                data = serializeObject(data)
+                data = cSharpBinarySerializer ? serializeObject(data) : data
             });
 
-            socket.Emit("event", o);
+            Task.Run(() => { socket.Emit("event", o); });
+            
         }
 
         public void send(String eventName, Object data)
@@ -176,11 +173,11 @@ namespace LinkIOcsharp
             {
                 me = receiveAlso,
                 type = eventName,
-                data = serializeObject(data),
+                data = cSharpBinarySerializer ? serializeObject(data) : data,
                 idList = ids
             });
 
-            socket.Emit("eventToList", o);
+            Task.Run(() => { socket.Emit("eventToList", o); });
         }
 
         public void send(string eventName, object data, List<User> receivers)
@@ -198,11 +195,11 @@ namespace LinkIOcsharp
             {
                 me = false,
                 type = eventName,
-                data = serializeObject(data),
+                data = cSharpBinarySerializer ? serializeObject(data) : data,
                 idList = ids
             });
 
-            socket.Emit("eventToList", o);
+            Task.Run(() => { socket.Emit("eventToList", o); });
         }
 
         public void getLatency(Action<Double> listener)
@@ -238,6 +235,11 @@ namespace LinkIOcsharp
             return connected;
         }
 
+        public void disconnect()
+        {
+            if (socket != null)
+                socket.Disconnect();
+        }
 
         public static string serializeObject(object o)
         {
@@ -251,6 +253,21 @@ namespace LinkIOcsharp
                 new BinaryFormatter().Serialize(stream, o);
                 return Convert.ToBase64String(stream.ToArray());
             }
+        }
+
+        internal void setServerIP(string ip)
+        {
+            this.serverIP = ip;
+        }
+
+        internal void setUser(string user)
+        {
+            this.user = user;
+        }
+
+        internal void setUserID(string id)
+        {
+            this.id = id;
         }
     }
 }
