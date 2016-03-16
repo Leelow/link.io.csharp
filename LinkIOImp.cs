@@ -13,11 +13,14 @@ using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
 using System.Threading.Tasks;
+using Quobject.Collections.Immutable;
+using Quobject.EngineIoClientDotNet.Client.Transports;
 
 namespace link.io.csharp
 {
     public class LinkIOImp : LinkIO
     {
+        private static int CHUNK_SIZE = 1024 * 512;
         private Socket socket;
         private String serverIP;
         private String user;
@@ -50,6 +53,7 @@ namespace link.io.csharp
 
             opts.Query = query;
             opts.AutoConnect = false;
+            opts.Transports = ImmutableList.Create<string>(WebSocket.NAME, Polling.NAME);
 
             socket = IO.Socket("http://" + serverIP, opts);
 
@@ -200,6 +204,51 @@ namespace link.io.csharp
             });
 
             Task.Run(() => { socket.Emit("eventToList", o); });
+        }
+
+        public LinkIOFile sendFile(string eventName, Stream stream, String fileName, double validity)
+        {
+            LinkIOFile file = new LinkIOFile();
+
+            int length = (int)stream.Length;
+            int nbChunk = (int)Math.Ceiling((double)length / CHUNK_SIZE);
+            int chunkID = 1;
+
+            socket.Emit("upload.start", new AckImpl((fileID) =>
+            {
+                file.FileID = fileID.ToString();
+                byte[] buffer = new byte[CHUNK_SIZE];
+
+                int bytesRead;
+                while ((bytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    Console.WriteLine("Sending " + chunkID + "/" + nbChunk);
+                    socket.Emit("upload.chunk", buffer);
+
+                    chunkID++;
+                }
+
+                socket.Emit("upload.end");
+                Console.WriteLine("Done.");
+                
+            }), fileName, eventName, nbChunk, validity);
+
+            return file;
+        }
+
+        public LinkIOFile sendFile(string eventName, Stream stream, String fileName, double validity, List<User> receivers)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void sendFile(string eventName, LinkIOFile file)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void sendFile(string eventName, LinkIOFile file, List<User> receivers)
+        {
+            throw new NotImplementedException();
         }
 
         public void getLatency(Action<Double> listener)

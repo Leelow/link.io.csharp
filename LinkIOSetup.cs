@@ -58,7 +58,7 @@ namespace link.io.csharp
             return this;
         }
 
-        //[Obsolete("Using C# binary serializer instead of default JSON serializer disable communication with the Java client.")]
+        [Obsolete("Using C# binary serializer instead of default JSON serializer disable communication with the Java client.")]
         public LinkIOSetup useCSharpBinarySerializer(bool use)
         {
             cSharpBinarySerializer = use;
