@@ -21,8 +21,9 @@ namespace link.io.csharp
 
         private LinkIOImp linkIO;
         private string serverIP;
-        private string user;
-        private string id = string.Empty;
+        private string mail;
+        private string password;
+		private string api_key;
         private bool cSharpBinarySerializer = false;
 
         private LinkIOSetup()
@@ -34,8 +35,9 @@ namespace link.io.csharp
         {
             linkIO = new LinkIOImp();
             serverIP = string.Empty;
-            user = string.Empty;
-            id = string.Empty;
+            mail = string.Empty;
+            password = string.Empty;
+			api_key = string.Empty;
             cSharpBinarySerializer = false;
             return this;
         }
@@ -46,15 +48,21 @@ namespace link.io.csharp
             return this;
         }
 
-        public LinkIOSetup withUser(String user)
+        public LinkIOSetup withMail(String mail)
         {
-            this.user = user;
+            this.mail = mail;
             return this;
         }
 
-        public LinkIOSetup withID(String id)
+        public LinkIOSetup withPassword(String password)
         {
-            this.id = id;
+            this.password = password;
+            return this;
+        }
+		
+		public LinkIOSetup withAPIKey(String api_key)
+        {
+            this.api_key = api_key;
             return this;
         }
 
@@ -68,8 +76,9 @@ namespace link.io.csharp
         public void connect(Action<LinkIO> listener)
         {
             linkIO.setServerIP(serverIP);
-            linkIO.setUser(user);
-            linkIO.setUserID(id);
+            linkIO.setMail(mail);
+            linkIO.setUserPassword(password);
+			linkIO.setAPIKey(api_key);
             linkIO.useCSharpBinarySerializer(cSharpBinarySerializer);
             linkIO.connect(listener);
         }

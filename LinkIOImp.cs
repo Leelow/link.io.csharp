@@ -23,8 +23,9 @@ namespace link.io.csharp
         private static int CHUNK_SIZE = 1024 * 512;
         private Socket socket;
         private String serverIP;
-        private String user;
-        private string id = string.Empty;
+        private string mail = string.Empty;
+        private string password = string.Empty;
+		private string api_key = string.Empty;
         private Action<List<User>> userInRoomChangedListener;
         private Dictionary<String, Action<Event>> eventListeners;
         private bool connected = false;
@@ -46,11 +47,14 @@ namespace link.io.csharp
         {
             IO.Options opts = new IO.Options();
             Dictionary<String, String> query = new Dictionary<String, String>();
-            query.Add("user", user);
+            if(mail != "")
+				query.Add("mail", mail);
 
-            if (id != "")
-                query.Add("id", id);
-
+            if (password != "")
+                query.Add("password", password);
+			
+			query.Add("api_key", api_key);
+			
             opts.Query = query;
             opts.AutoConnect = false;
             opts.Transports = ImmutableList.Create<string>(WebSocket.NAME, Polling.NAME);
@@ -309,14 +313,19 @@ namespace link.io.csharp
             this.serverIP = ip;
         }
 
-        internal void setUser(string user)
+        internal void setMail(string mail)
         {
-            this.user = user;
+            this.mail = mail;
         }
 
-        internal void setUserID(string id)
+        internal void setUserPassword(string password)
         {
-            this.id = id;
+            this.password = password;
+        }
+		
+		internal void setAPIKey(string api_key)
+        {
+            this.api_key = api_key;
         }
     }
 }
