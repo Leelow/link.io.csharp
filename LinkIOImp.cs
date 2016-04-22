@@ -34,7 +34,6 @@ namespace link.io.csharp
         internal LinkIOImp()
         {
             eventListeners = new Dictionary<String, Action<Event>>();
-            id = "";
 
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
             {
