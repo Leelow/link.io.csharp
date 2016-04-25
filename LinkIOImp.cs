@@ -30,6 +30,7 @@ namespace link.io.csharp
         private Dictionary<String, Action<Event>> eventListeners;
         private bool connected = false;
         private bool cSharpBinarySerializer = false;
+        private User currentUser;
 
         internal LinkIOImp()
         {
@@ -69,6 +70,20 @@ namespace link.io.csharp
                         userInRoomChangedListener.Invoke(((JArray)e).ToObject<List<User>>());
                     });
                 }
+            });
+
+            socket.On("info", (Object o) =>
+            {
+                JObject evt = (JObject)o;
+
+                currentUser = new User()
+                {
+                    Name = (String)evt.SelectToken("name"),
+                    FirstName = (String)evt.SelectToken("fname"),
+                    Mail = (String)evt.SelectToken("mail"),
+                    ID = (String)evt.SelectToken("id"),
+                    Role = (String)evt.SelectToken("role")
+                };
             });
             
             socket.On(Socket.EVENT_CONNECT, () =>
@@ -291,6 +306,11 @@ namespace link.io.csharp
         {
             if (socket != null)
                 socket.Disconnect();
+        }
+
+        public User getCurrentUser()
+        {
+            return currentUser;
         }
 
         public static string serializeObject(object o)

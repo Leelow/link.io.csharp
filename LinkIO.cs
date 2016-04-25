@@ -102,5 +102,8 @@ namespace link.io.csharp
         /// Disconnect from current server
         /// </summary>
         void disconnect();
+
+
+        User getCurrentUser();
     }
 }
