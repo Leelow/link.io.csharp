@@ -9,7 +9,7 @@ using Newtonsoft.Json;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 
-namespace LinkIOcsharp.model
+namespace link.io.csharp.model
 {
     public class Event
     {

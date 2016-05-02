@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace LinkIOcsharp.model
+namespace link.io.csharp.model
 {
     public class User
     {

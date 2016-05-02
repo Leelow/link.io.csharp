@@ -7,8 +7,8 @@ using Quobject.SocketIoClientDotNet.Client;
 // Json C# implementation
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
-using LinkIOcsharp.model;
-using LinkIOcsharp.exception;
+using link.io.csharp.model;
+using link.io.csharp.exception;
 using System.IO;
 using System.Runtime.Serialization.Formatters.Binary;
 using System.Threading;
@@ -31,9 +31,11 @@ namespace link.io.csharp
         private bool connected = false;
         private bool cSharpBinarySerializer = false;
         private User currentUser;
+        private List<User> usersInRoom;
 
         internal LinkIOImp()
         {
+            usersInRoom = new List<User>();
             eventListeners = new Dictionary<String, Action<Event>>();
 
             JsonConvert.DefaultSettings = () => new JsonSerializerSettings
@@ -63,11 +65,12 @@ namespace link.io.csharp
 
             socket.On("users", (e) =>
             {
+                usersInRoom = ((JArray)e).ToObject<List<User>>();
                 if (userInRoomChangedListener != null)
                 {
                     Task.Run(() =>
                     {
-                        userInRoomChangedListener.Invoke(((JArray)e).ToObject<List<User>>());
+                        userInRoomChangedListener.Invoke(usersInRoom);
                     });
                 }
             });
@@ -79,15 +82,12 @@ namespace link.io.csharp
                 currentUser = new User()
                 {
                     Name = (String)evt.SelectToken("name"),
-                    FirstName = (String)evt.SelectToken("fname"),
+                    FirstName = (String)evt.SelectToken("firstname"),
                     Mail = (String)evt.SelectToken("mail"),
                     ID = (String)evt.SelectToken("id"),
                     Role = (String)evt.SelectToken("role")
                 };
-            });
-            
-            socket.On(Socket.EVENT_CONNECT, () =>
-            {
+
                 Task.Run(() =>
                 {
                     connected = true;
@@ -144,7 +144,8 @@ namespace link.io.csharp
             {
                 Task.Run(() =>
                 {
-                    callback.Invoke(id as String, ((JArray)users).ToObject<List<User>>());
+                    usersInRoom = ((JArray)users).ToObject<List<User>>();
+                    callback.Invoke(id as String, usersInRoom);
                 });
             }, roomID);
         }
@@ -289,12 +290,10 @@ namespace link.io.csharp
                 throw new NotConnectedException("ConnectIO: socket disconnected.");
         }
 
-        public void getAllUsersInCurrentRoom(Action<List<User>> callback)
+        public List<User> getAllUsersInCurrentRoom()
         {
             checkConnect();
-            socket.Emit("getAllUsers", (users) => {
-                callback.Invoke(((JArray)users).ToObject<List<User>>());
-            });
+            return usersInRoom;
         }
 
         public bool isConnected()

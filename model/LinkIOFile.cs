@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace link.io.csharp
+namespace link.io.csharp.model
 {
     public class LinkIOFile
     {
