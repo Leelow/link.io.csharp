@@ -26,6 +26,7 @@ namespace link.io.csharp
         private string mail = string.Empty;
         private string password = string.Empty;
 		private string api_key = string.Empty;
+        private Action<Exception> errorHandler = null;
         private Action<List<User>> userInRoomChangedListener;
         private Dictionary<String, Action<Event>> eventListeners;
         private bool connected = false;
@@ -72,6 +73,29 @@ namespace link.io.csharp
                     {
                         userInRoomChangedListener.Invoke(usersInRoom);
                     });
+                }
+            });
+			
+			socket.On("error", (Object o) =>
+            {
+                if (errorHandler != null)
+                {
+                    string message = (string)((JValue)o);
+                    message = message.Replace("\"", "");
+
+                    switch (((string)((JValue)o)).Replace("\"", ""))
+                    {
+                        case "ACCOUNT ERROR":
+                            errorHandler.Invoke(new AccountNotFoundException("Email does not match any account in API."));
+                            break;
+                        case "PASSWORD ERROR":
+                            errorHandler.Invoke(new WrongPasswordException("Password does not match the given Email."));
+                            break;
+                        case "API_KEY ERROR":
+                        default:
+                            errorHandler.Invoke(new WrongAPIKeyException("The application does not match with an API key."));
+                            break;
+                    }
                 }
             });
 
@@ -344,6 +368,11 @@ namespace link.io.csharp
 		internal void setAPIKey(string api_key)
         {
             this.api_key = api_key;
+        }
+		
+        internal void setErrorHandler(Action<Exception> errorHandler)
+        {
+            this.errorHandler = errorHandler;
         }
     }
 }
